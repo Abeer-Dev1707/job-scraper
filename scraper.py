@@ -1,43 +1,38 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import time
+import os
 
-all_jobs = []
+URL = "https://realpython.github.io/fake-jobs/"
+response = requests.get(URL)
+soup = BeautifulSoup(response.text, "html.parser")
 
-# عدد الصفحات اللي نريد نزورها (مثلاً 50 صفحة = تقريباً آلاف الوظائف)
-for page in range(1, 51):
-    url = f"https://www.timesjobs.com/candidate/job-search.html?from=submit&actualTxtKeywords=python&searchBy=0&rdoOperator=OR&searchType=personalizedSearch&luceneResultSize=25&postWeek=60&txtKeywords=python&cboWorkExp1=0&pDate=I&sequence={page}&startPage=1"
-    
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
-    jobs = soup.find_all("li", class_="clearfix job-bx wht-shd-bx")
+jobs = []
 
-    if not jobs:  # لو الصفحة فاضية نوقف
-        print(f"🔴 ما في وظائف بالصفحة {page}، وقفنا.")
-        break
+for job_element in soup.find_all("div", class_="card-content"):
+    title = job_element.find("h2", class_="title").text.strip()
+    company = job_element.find("h3", class_="subtitle").text.strip()
+    location = job_element.find("p", class_="location").text.strip()
+    jobs.append({"title": title, "company": company, "location": location})
 
-    for job in jobs:
-        job_title = job.find("h2").text.strip() if job.find("h2") else "N/A"
-        company = job.find("h3", class_="joblist-comp-name")
-        company = company.text.strip() if company else "N/A"
-        skills = job.find("span", class_="srp-skills")
-        skills = skills.text.strip() if skills else "N/A"
-        more_info = job.header.h2.a['href'] if job.header and job.header.h2 and job.header.h2.a else "N/A"
+# --- 📌 تعديل هنا: نضيف للملف بدلاً من استبداله ---
+file_path = "jobs.json"
 
-        all_jobs.append({
-            "title": job_title,
-            "company": company,
-            "skills": skills,
-            "link": more_info
-        })
+# إذا الملف موجود، نقرأ محتواه ونضيف عليه
+if os.path.exists(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        try:
+            existing_jobs = json.load(f)
+        except json.JSONDecodeError:
+            existing_jobs = []
+else:
+    existing_jobs = []
 
-    print(f"✅ الصفحة {page} تمت، إجمالي الوظائف حتى الآن: {len(all_jobs)}")
+# ندمج الوظائف الجديدة مع القديمة
+all_jobs = existing_jobs + jobs
 
-    time.sleep(2)  # نريح شوي علشان ما يوقفنا الموقع
+# نحفظ الملف مع كل الوظائف
+with open(file_path, "w", encoding="utf-8") as f:
+    json.dump(all_jobs, f, indent=2, ensure_ascii=False)
 
-# حفظ في JSON
-with open("jobs.json", "w", encoding="utf-8") as f:
-    json.dump(all_jobs, f, ensure_ascii=False, indent=4)
-
-print(f"🎉 تم جمع {len(all_jobs)} وظيفة وحفظها في jobs.json")
+print(f"✅ تمت إضافة {len(jobs)} وظيفة جديدة، المجموع الآن {len(all_jobs)} وظيفة.")
