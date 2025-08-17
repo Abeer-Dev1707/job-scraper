@@ -1,33 +1,37 @@
 import requests
+from bs4 import BeautifulSoup
 import json
-from datetime import datetime
 
-def scrape_jobs():
-    # رابط API وهمي (بدليه بالرابط الصحيح لاحقاً)
-    url = "https://remoteok.com/api"
+def scrape_jobs(pages=5):
+    all_jobs = []
+    base_url = "https://realpython.github.io/fake-jobs/"
 
-    response = requests.get(url)
-    jobs = response.json()
+    for page in range(1, pages+1):
+        url = f"{base_url}?page={page}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            print(f"فشل تحميل الصفحة {page}")
+            continue
 
-    # نحفظ البيانات في ملف jobs.json داخل مجلد data
-    data = []
-    for job in jobs[1:10]:  # ناخذ أول 10 وظائف كمثال
-        data.append({
-            "title": job.get("position"),
-            "company": job.get("company"),
-            "location": job.get("location"),
-            "date": job.get("date"),
-        })
+        soup = BeautifulSoup(response.text, "html.parser")
+        jobs = soup.find_all("div", class_="card-content")
 
-    # إنشاء مجلد data إذا ما كان موجود
-    import os
-    if not os.path.exists("data"):
-        os.makedirs("data")
+        for job in jobs:
+            title = job.find("h2", class_="title").text.strip()
+            company = job.find("h3", class_="company").text.strip()
+            location = job.find("p", class_="location").text.strip()
+            all_jobs.append({
+                "title": title,
+                "company": company,
+                "location": location
+            })
 
-    with open("data/jobs.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    return all_jobs
 
-    print(f"تم حفظ {len(data)} وظيفة في data/jobs.json")
 
 if __name__ == "__main__":
-    scrape_jobs()
+    jobs = scrape_jobs(pages=5)  # عدد الصفحات المطلوب سحبه
+    print(f"تم استخراج {len(jobs)} وظيفة ✅")
+
+    with open("jobs.json", "w", encoding="utf-8") as f:
+        json.dump(jobs, f, ensure_ascii=False, indent=2)
