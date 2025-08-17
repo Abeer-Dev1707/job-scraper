@@ -1,23 +1,33 @@
 import requests
-from bs4 import BeautifulSoup
 import json
+from datetime import datetime
 
-URL = "https://realpython.github.io/fake-jobs/"
-response = requests.get(URL)
-soup = BeautifulSoup(response.text, "html.parser")
+def scrape_jobs():
+    # رابط API وهمي (بدليه بالرابط الصحيح لاحقاً)
+    url = "https://remoteok.com/api"
 
-jobs = []
-for job in soup.find_all("div", class_="card-content"):
-    title = job.find("h2", class_="title").get_text(strip=True)
-    company = job.find("h3", class_="company").get_text(strip=True)
-    location = job.find("p", class_="location").get_text(strip=True)
-    jobs.append({
-        "title": title,
-        "company": company,
-        "location": location
-    })
+    response = requests.get(url)
+    jobs = response.json()
 
-with open("jobs.json", "w", encoding="utf-8") as f:
-    json.dump(jobs, f, indent=2, ensure_ascii=False)
+    # نحفظ البيانات في ملف jobs.json داخل مجلد data
+    data = []
+    for job in jobs[1:10]:  # ناخذ أول 10 وظائف كمثال
+        data.append({
+            "title": job.get("position"),
+            "company": job.get("company"),
+            "location": job.get("location"),
+            "date": job.get("date"),
+        })
 
-print(f"✅ Extracted {len(jobs)} jobs and saved to jobs.json")
+    # إنشاء مجلد data إذا ما كان موجود
+    import os
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    with open("data/jobs.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    print(f"تم حفظ {len(data)} وظيفة في data/jobs.json")
+
+if __name__ == "__main__":
+    scrape_jobs()
