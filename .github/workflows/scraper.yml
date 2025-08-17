@@ -1,25 +1,29 @@
 name: Job Scraper
 
 on:
-  workflow_dispatch:       # تشغيل يدوي
+  workflow_dispatch:
   schedule:
-    - cron: "0 */12 * * *" # تشغيل كل 12 ساعة
+    - cron: "0 */12 * * *"
+
+permissions:
+  contents: write   # السماح للـ bot بالكتابة للمستودع
 
 jobs:
   scraper:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          pip install requests beautifulsoup4
 
       - name: Run scraper
         run: python scraper.py
