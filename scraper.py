@@ -1,37 +1,43 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import time
 
-def scrape_jobs(pages=5):
-    all_jobs = []
-    base_url = "https://realpython.github.io/fake-jobs/"
+all_jobs = []
 
-    for page in range(1, pages+1):
-        url = f"{base_url}?page={page}"
-        response = requests.get(url)
-        if response.status_code != 200:
-            print(f"فشل تحميل الصفحة {page}")
-            continue
+# عدد الصفحات اللي نريد نزورها (مثلاً 50 صفحة = تقريباً آلاف الوظائف)
+for page in range(1, 51):
+    url = f"https://www.timesjobs.com/candidate/job-search.html?from=submit&actualTxtKeywords=python&searchBy=0&rdoOperator=OR&searchType=personalizedSearch&luceneResultSize=25&postWeek=60&txtKeywords=python&cboWorkExp1=0&pDate=I&sequence={page}&startPage=1"
+    
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    jobs = soup.find_all("li", class_="clearfix job-bx wht-shd-bx")
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        jobs = soup.find_all("div", class_="card-content")
+    if not jobs:  # لو الصفحة فاضية نوقف
+        print(f"🔴 ما في وظائف بالصفحة {page}، وقفنا.")
+        break
 
-        for job in jobs:
-            title = job.find("h2", class_="title").text.strip()
-            company = job.find("h3", class_="company").text.strip()
-            location = job.find("p", class_="location").text.strip()
-            all_jobs.append({
-                "title": title,
-                "company": company,
-                "location": location
-            })
+    for job in jobs:
+        job_title = job.find("h2").text.strip() if job.find("h2") else "N/A"
+        company = job.find("h3", class_="joblist-comp-name")
+        company = company.text.strip() if company else "N/A"
+        skills = job.find("span", class_="srp-skills")
+        skills = skills.text.strip() if skills else "N/A"
+        more_info = job.header.h2.a['href'] if job.header and job.header.h2 and job.header.h2.a else "N/A"
 
-    return all_jobs
+        all_jobs.append({
+            "title": job_title,
+            "company": company,
+            "skills": skills,
+            "link": more_info
+        })
 
+    print(f"✅ الصفحة {page} تمت، إجمالي الوظائف حتى الآن: {len(all_jobs)}")
 
-if __name__ == "__main__":
-    jobs = scrape_jobs(pages=5)  # عدد الصفحات المطلوب سحبه
-    print(f"تم استخراج {len(jobs)} وظيفة ✅")
+    time.sleep(2)  # نريح شوي علشان ما يوقفنا الموقع
 
-    with open("jobs.json", "w", encoding="utf-8") as f:
-        json.dump(jobs, f, ensure_ascii=False, indent=2)
+# حفظ في JSON
+with open("jobs.json", "w", encoding="utf-8") as f:
+    json.dump(all_jobs, f, ensure_ascii=False, indent=4)
+
+print(f"🎉 تم جمع {len(all_jobs)} وظيفة وحفظها في jobs.json")
